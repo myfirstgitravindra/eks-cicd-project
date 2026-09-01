@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_iam as iam,
     RemovalPolicy,
 )
+from aws_cdk.lambda_layer_kubectl_v32 import KubectlV32Layer
 from constructs import Construct
 
 
@@ -13,7 +14,6 @@ class EksCicdStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # --- VPC (small, 1 NAT gateway to save cost) ---
         vpc = ec2.Vpc(
             self, "EksVpc",
             max_azs=2,
@@ -28,7 +28,6 @@ class EksCicdStack(Stack):
             ],
         )
 
-        # --- ECR repo for our app image ---
         repo = ecr.Repository(
             self, "AppRepo",
             repository_name="eks-cicd-app",
@@ -36,23 +35,22 @@ class EksCicdStack(Stack):
             empty_on_delete=True,
         )
 
-        # --- IAM role for cluster admin access (so kubectl from Jenkins EC2 can manage it) ---
         cluster_admin_role = iam.Role(
             self, "ClusterAdminRole",
             assumed_by=iam.AccountRootPrincipal(),
         )
 
-        # --- EKS Cluster (small single small node to stay cheap) ---
         cluster = eks.Cluster(
             self, "EksCluster",
             vpc=vpc,
             cluster_name="cicd-demo-cluster",
-            version=eks.KubernetesVersion.V1_29,
-            default_capacity=0,          # we add nodegroup manually below
+            version=eks.KubernetesVersion.V1_32,
+            kubectl_layer=KubectlV32Layer(self, "KubectlLayer"),
+            default_capacity=0,
             masters_role=cluster_admin_role,
         )
 
-        cluster.add_nodegroup_capacity(
+        nodegroup = cluster.add_nodegroup_capacity(
             "AppNodeGroup",
             instance_types=[ec2.InstanceType("t3.small")],
             min_size=1,
@@ -61,5 +59,4 @@ class EksCicdStack(Stack):
             disk_size=20,
         )
 
-        # Allow the cluster to pull from our ECR repo
-        repo.grant_pull(cluster.default_nodegroup_role) if cluster.default_nodegroup_role else None
+        repo.grant_pull(nodegroup.role)
