@@ -1,121 +1,87 @@
-from flask import Flask
-import socket
-import platform
-from datetime import datetime
+from flask import Flask, jsonify, render_template_string
+import os
 
 app = Flask(__name__)
 
-APP_VERSION = "v3"
+# CHANGE THIS VALUE TO V2, V3, ETC. TO VERIFY NEW DEPLOYMENTS!
+APP_VERSION = "v1.0.0"
 
-PAGE = """
+# HTML Template for a beautiful, modern landing page
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>EKS CI/CD Pipeline</title>
-<style>
-  * {{ margin:0; padding:0; box-sizing:border-box; }}
-  body {{
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: #fff;
-  }}
-  .card {{
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 20px;
-    padding: 48px 56px;
-    text-align: center;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    max-width: 480px;
-  }}
-  .badge {{
-    display: inline-block;
-    background: #00e676;
-    color: #063;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 4px 14px;
-    border-radius: 999px;
-    margin-bottom: 18px;
-    letter-spacing: 0.5px;
-  }}
-  h1 {{
-    font-size: 28px;
-    margin-bottom: 10px;
-    background: linear-gradient(90deg, #00e676, #00b0ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }}
-  p {{
-    font-size: 15px;
-    color: #cfd8dc;
-    margin: 6px 0;
-  }}
-  .meta {{
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.15);
-    font-size: 13px;
-    color: #90a4ae;
-    text-align: left;
-  }}
-  .meta span {{ color: #00e676; font-weight: 600; }}
-  .pulse {{
-    width: 10px; height: 10px;
-    background: #00e676;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 8px;
-    box-shadow: 0 0 0 rgba(0,230,118,0.6);
-    animation: pulse 1.5s infinite;
-  }}
-  @keyframes pulse {{
-    0% {{ box-shadow: 0 0 0 0 rgba(0,230,118,0.6); }}
-    70% {{ box-shadow: 0 0 0 10px rgba(0,230,118,0); }}
-    100% {{ box-shadow: 0 0 0 0 rgba(0,230,118,0); }}
-  }}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EKS CI/CD Application</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 { margin-bottom: 0.5rem; font-size: 2.5rem; }
+        p { color: #e0e0e0; font-size: 1.1rem; }
+        .badge {
+            background-color: #4caf50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 1rem;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+        }
+        .pod-info {
+            margin-top: 2rem;
+            font-size: 0.85rem;
+            color: #b0bec5;
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
-  <div class="card">
-    <div class="badge">VERSION {version}</div>
-    <h1>🚀 EKS CI/CD Pipeline</h1>
-    <p><span class="pulse"></span>Live and running on Kubernetes</p>
-    <p>Deployed automatically via Jenkins + GitHub Webhook</p>
-    <div class="meta">
-      <p>Pod: <span>{hostname}</span></p>
-      <p>Platform: <span>{platform}</span></p>
-      <p>Server time: <span>{time}</span></p>
+    <div class="container">
+        <h1>🚀 Deployment Successful!</h1>
+        <p>Your Jenkins to AWS EKS CI/CD pipeline is working flawlessly.</p>
+        <div class="badge">Version: {{ version }}</div>
+        <div class="pod-info">
+            Served by Pod: {{ pod_name }}
+        </div>
     </div>
-  </div>
 </body>
 </html>
 """
 
-@app.route("/")
+@app.route('/')
 def home():
-    hostname = socket.gethostname()
-    return PAGE.format(
-        version=APP_VERSION,
-        hostname=hostname,
-        platform=platform.platform(),
-        time=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-    )
+    # Dynamically gets the Kubernetes Pod Name to show rolling updates in action
+    pod_name = os.getenv('HOSTNAME', 'Local Environment')
+    return render_template_string(HTML_TEMPLATE, version=APP_VERSION, pod_name=pod_name)
 
-@app.route("/health")
-def health():
-    return "OK\n", 200
+# CRUCIAL: Your EKS deployment.yaml probes point here!
+@app.route('/health')
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "version": APP_VERSION
+    }), 200
 
-@app.route("/version")
-def version():
-    return f"{APP_VERSION}\n", 200
+if __name__ == '__main__':
+    # Runs on port 5000 as configured in your containerPort
+    app.run(host='0.0.0.0', port=5000)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
