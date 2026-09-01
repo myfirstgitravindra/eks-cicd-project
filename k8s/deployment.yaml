@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: eks-cicd-app
-          image: <ECR_REPO_URI>:latest
+          image: 603401240749.dkr.ecr.us-east-1.amazonaws.com/eks-cicd-app:latest
           ports:
             - containerPort: 5000
           resources:
