@@ -15,26 +15,30 @@ spec:
         app: eks-cicd-app
     spec:
       containers:
-        - name: eks-cicd-app
-          image: 603401240749.dkr.ecr.us-east-1.amazonaws.com/eks-cicd-app:latest
-          ports:
-            - containerPort: 5000
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "250m"
-              memory: "256Mi"
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
+      - name: eks-cicd-app
+        # CHANGE: Replace 'latest' with a dynamic build tag in your CI/CD pipeline
+        image: 603401240749.dkr.ecr.us-east-1.amazonaws.com/eks-cicd-app:latest 
+        # ADDED: Forces K8s to check ECR for new image updates
+        imagePullPolicy: Always 
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
