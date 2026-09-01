@@ -13,13 +13,14 @@ spec:
     metadata:
       labels:
         app: eks-cicd-app
+      annotations:
+        # This forces a new deployment every time the value changes
+        deploy-timestamp: "BUILD_TIMESTAMP" 
     spec:
       containers:
       - name: eks-cicd-app
-        # CHANGE: Replace 'latest' with a dynamic build tag in your CI/CD pipeline
-        image: 603401240749.dkr.ecr.us-east-1.amazonaws.com/eks-cicd-app:latest 
-        # ADDED: Forces K8s to check ECR for new image updates
-        imagePullPolicy: Always 
+        image: ://amazonaws.com
+        imagePullPolicy: Always
         ports:
         - containerPort: 5000
         resources:
